@@ -1,113 +1,329 @@
-import Image from 'next/image'
+"use client";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import { useState } from "react";
 
-export default function Home() {
+const Home = () => {
+  const search = useSearchParams();
+  const skip = parseInt(search.get("skip") || 0);
+  const limit = parseInt(search.get("limit") || 8);
+  const router = useRouter();
+
+  const {
+    isLoading,
+    error,
+    data: products,
+  } = useQuery({
+    queryKey: ["products", limit, skip],
+    queryFn: async () => {
+      const data = await fetch(
+        `https://dummyjson.com/products?limit=${limit}&skip=${skip}`
+      ).then((res) => res.json());
+      return data.products;
+    },
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      return await fetch("https://dummyjson.com/products/categories").then(
+        (res) => res.json()
+      );
+    },
+  });
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return <ErrorDisplay error={error} />;
+  }
+
+  const handlePrevClick = () => {
+    navigateWithQueryParams(-4);
+  };
+
+  const handleNextClick = () => {
+    navigateWithQueryParams(4);
+  };
+
+  const navigateWithQueryParams = (moveCount) => {
+    const newSkip = Math.max(skip + moveCount, 0);
+    router.push(`/?skip=${newSkip}&limit=${limit}`);
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <>
+      <div className="bg-white">
+        <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-12 lg:max-w-7xl lg:px-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+              My store
+            </h2>
+          </div>
+
+          <div>
+            <div className="relative mt-2 rounded-md flex items-center gap-8 mb-4">
+              <input
+                onChange={() => {}}
+                type="text"
+                name="price"
+                id="price"
+                className="block w-full rounded-md border-0 py-1.5 pl-7 pr-20 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                placeholder="IPhone"
+              />
+              <select className="border p-2 text-gray-800" onChange={() => {}}>
+                <option>Select category</option>
+                {categories?.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <ProductGrid products={products} />
+
+          <div className="flex gap-2 justify-center mt-12">
+            <button
+              disabled={skip < limit}
+              className="bg-purple-500 px-4 py-1 text-white rounded"
+              onClick={handlePrevClick}
+            >
+              Prev
+            </button>
+            <button
+              disabled={limit + skip >= products?.total}
+              className="bg-purple-500 px-4 py-1 text-white rounded"
+              onClick={handleNextClick}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
+    </>
+  );
+};
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+const LoadingSpinner = () => {
+  return (
+    <div className="relative flex justify-center min-h-screen items-center">
+      <div className="absolute animate-spin rounded-full h-32 w-32 border-t-4 border-b-4 border-purple-500"></div>
+      <img
+        src="https://www.svgrepo.com/show/509001/avatar-thinking-9.svg"
+        className="rounded-full h-28 w-28"
+      />
+    </div>
+  );
+};
+
+const ErrorDisplay = ({ error }) => {
+  return <h3>Error: {error.message}</h3>;
+};
+
+const ProductGrid = ({ products }) => {
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
+      {products?.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
+  );
+};
+
+const ProductCard = ({ product }) => {
+  return (
+    <div className="group relative">
+      <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-md bg-gray-200 lg:aspect-none group-hover:opacity-75 lg:h-64">
+        <img
+          src={product.thumbnail}
+          alt={product.title}
+          className="h-full w-full object-cover object-center lg:h-full lg:w-full"
         />
       </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+      <div className="mt-4 flex justify-between">
+        <div>
+          <h3 className="text-sm text-gray-700">
+            <Link href={`/products/${product.id}`}>
+              <span aria-hidden="true" className="absolute inset-0" />
+              {product.title}
+            </Link>
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">{product.category}</p>
+        </div>
+        <p className="text-sm font-medium text-gray-900">₹{product.price}</p>
       </div>
-    </main>
-  )
-}
+    </div>
+  );
+};
+
+export default Home;
+
+// import { useQuery } from "@tanstack/react-query";
+// import Link from "next/link";
+// import {
+//   useParams,
+//   usePathname,
+//   useRouter,
+//   useSearchParams,
+// } from "next/navigation";
+// import { useState } from "react";
+
+// const Home = () => {
+//   const search = useSearchParams();
+//   const skip = parseInt(search.get("skip") || 0);
+//   const limit = parseInt(search.get("limit") || 8);
+
+//   const router = useRouter();
+//   const {
+//     isLoading,
+//     error,
+//     data: products,
+//   } = useQuery({
+//     queryKey: ["products", limit, skip],
+//     queryFn: async () => {
+//       const data = await fetch(
+//         `https://dummyjson.com/products?limit=${limit}&skip=${skip}`
+//       ).then((res) => res.json());
+//       return data.products;
+//     },
+//   });
+
+//   const { data: categories } = useQuery({
+//     queryKey: ["categories"],
+//     queryFn: async () => {
+//       return await fetch("https://dummyjson.com/products/categories").then(
+//         (res) => res.json()
+//       );
+//     },
+//   });
+
+//   // const handleMove = (moveCount) => {
+//   //   // Next
+//   //   // skip = 4, moveCount = 4
+//   //   // 4 + 4 = 8
+
+//   //   // Prev
+//   //   // skip = 0, moveCount = -4
+//   //   // 0 + -4 = -4
+
+//   //   setSearchParams((prev) => {
+//   //     prev.set("skip", Math.max(skip + moveCount, 0));
+//   //     return prev;
+//   //   });
+//   // };
+
+//   if (isLoading) {
+//     return (
+//       <div className="relative flex justify-center min-h-screen items-center">
+//         <div className="absolute animate-spin rounded-full h-32 w-32 border-t-4 border-b-4 border-purple-500"></div>
+//         <img
+//           src="https://www.svgrepo.com/show/509001/avatar-thinking-9.svg"
+//           className="rounded-full h-28 w-28"
+//         />
+//       </div>
+//     );
+//   }
+
+//   if (error) {
+//     return <h3>Error: {error.message}</h3>;
+//   }
+
+//   return (
+//     <>
+//       <div className="bg-white">
+//         <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-12 lg:max-w-7xl lg:px-8">
+//           <div className="flex items-center justify-between">
+//             <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+//               My store
+//             </h2>
+//           </div>
+//           <div>
+//             <div className="relative mt-2 rounded-md flex items-center gap-8 mb-4">
+//               <input
+//                 onChange={() => {}}
+//                 type="text"
+//                 name="price"
+//                 id="price"
+//                 className="block w-full rounded-md border-0 py-1.5 pl-7 pr-20 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+//                 placeholder="IPhone"
+//               />
+//               <select className="border p-2 text-gray-800" onChange={() => {}}>
+//                 <option>Select category</option>
+//                 {categories?.map((category) => (
+//                   <option key={category} value={category}>
+//                     {category}
+//                   </option>
+//                 ))}
+//               </select>
+//             </div>
+//           </div>
+
+//           <div className="mt-6 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4 xl:gap-x-8">
+//             {products?.map((product) => (
+//               <div key={product.id} className="group relative">
+//                 <div className="aspect-h-1 aspect-w-1 w-full overflow-hidden rounded-md bg-gray-200 lg:aspect-none group-hover:opacity-75 lg:h-64">
+//                   <img
+//                     src={product.thumbnail}
+//                     alt={product.title}
+//                     className="h-full w-full object-cover object-center lg:h-full lg:w-full"
+//                   />
+//                 </div>
+//                 <div className="mt-4 flex justify-between">
+//                   <div>
+//                     <h3 className="text-sm text-gray-700">
+//                       <Link href={`/products/${product.id}`}>
+//                         <span aria-hidden="true" className="absolute inset-0" />
+//                         {product.title}
+//                       </Link>
+//                     </h3>
+//                     <p className="mt-1 text-sm text-gray-500">
+//                       {product.category}
+//                     </p>
+//                   </div>
+//                   <p className="text-sm font-medium text-gray-900">
+//                     ₹{product.price}
+//                   </p>
+//                 </div>
+//               </div>
+//             ))}
+//           </div>
+
+//           <div className="flex gap-2  justify-center mt-12">
+//             <button
+//               className="bg-purple-500 px-4 py-1 text-white rounded"
+//               onClick={() => {
+//                 router.push(
+//                   "/" + "?" + "skip=" + (+skip - 4) + "&" + "limit=" + limit
+//                 );
+//               }}
+//             >
+//               Prev
+//             </button>
+//             <button
+//               className="bg-purple-500 px-4 py-1 text-white rounded"
+//               onClick={() => {
+//                 router.push(
+//                   "/" + "?" + "skip=" + (+skip + 4) + "&" + "limit=" + limit
+//                 );
+//               }}
+//             >
+//               Next
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+//     </>
+//   );
+// };
+
+// export default Home;
